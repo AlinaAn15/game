@@ -31,13 +31,13 @@ brick_padding = 5
 brick_width = (width - (brick_cols + 1) * brick_padding) // brick_cols
 brick_height = 20
 
-b_types = ['life', 'width', 'speed']
+b_types = ['life', 'width', 'speed', 'slowdown']
 b_falls = []
 b_timer = 0
 b_active = False
 speed_active = False
+slow_mode_active = False
 speed_timer = 0
-
 
 def create():
     bricks = []
@@ -50,7 +50,6 @@ def create():
             brick_row.append(brick)
         bricks.append(brick_row)
     return bricks
-
 
 def bonus_bricks(bricks):
     bonuses = []
@@ -65,22 +64,18 @@ def bonus_bricks(bricks):
             bonus_positions.add(position)
     return bonuses
 
-
 def set_ball_speed(speed, hit_position):
     angle = (hit_position - 0.5) * math.pi / 4
     new_x_speed = speed * math.sin(angle)
     new_y_speed = -speed * math.cos(angle)
     return new_x_speed, new_y_speed
 
-
 def draw_lives():
     for i in range(lives):
         screen.blit(heart_image, (width - 495 + (i * 30), 10))
 
-
 def all_bricks_destroyed(bricks):
     return all(all(brick is None for brick in row) for row in bricks)
-
 
 bricks = create()
 bonuses = bonus_bricks(bricks)
@@ -163,10 +158,14 @@ while done:
                             break
                     break
 
+        if all_bricks_destroyed(bricks):
+            win = True
+
         for bonus in b_falls:
             bonus['rect'].y += 3
             if bonus['rect'].y > height:
                 b_falls.remove(bonus)
+                continue
 
             if bonus['rect'].colliderect(rect):
                 if bonus['type'] == 'life':
@@ -175,18 +174,28 @@ while done:
                     b_timer = pygame.time.get_ticks()
                     rect_width = rect_width2 * 2
                 elif bonus['type'] == 'speed':
+                    speed += 5
                     speed_active = True
                     speed_timer = pygame.time.get_ticks()
-                    x1_speed *= 1.2
+                elif bonus['type'] == 'slowdown':
+                    speed -= 5
+                    slow_mode_active = True
+                    speed_timer = pygame.time.get_ticks()
                 b_falls.remove(bonus)
+            else:
+                bonus['rect'].y += 3
 
         if b_timer and pygame.time.get_ticks() - b_timer > 3000:
             rect_width = rect_width2
             b_timer = 0
 
         if speed_active and pygame.time.get_ticks() - speed_timer > 3000:
-            x1_speed = speed
+            speed -= 5
             speed_active = False
+
+        if slow_mode_active and pygame.time.get_ticks() - speed_timer > 5000:
+            speed += 5
+            slow_mode_active = False
 
         screen.fill((255, 255, 224))
         draw_lives()
@@ -206,6 +215,8 @@ while done:
                 pygame.draw.circle(screen, (255, 0, 0), (bonus['rect'].centerx, bonus['rect'].centery), 10)
             elif bonus['type'] == 'speed':
                 pygame.draw.rect(screen, (165, 42, 42), bonus['rect'])
+            elif bonus['type'] == 'slowdown':
+                pygame.draw.rect(screen, (255, 165, 0), bonus['rect'])
 
     pygame.display.flip()
     clock.tick(60)
